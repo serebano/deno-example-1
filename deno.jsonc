@@ -12,9 +12,9 @@
     "include": [
       "main.ts",
       "importMap.json",
-      "file:///Users/serebano/dev/clappcodes/deno-transporter/src/",
-      "file:///Users/serebano/dev/clappcodes/deno-transporter/src/**/*.ts",
-      "file:///Users/serebano/dev/clappcodes/deno-transporter/src/server.ts"
+      "./transporter/src/",
+      "./transporter/src/**/*.ts",
+      "./transporter/src/server.ts"
     ],
     "entrypoint": "./main.ts",
     "importmap": "./importMap.json"

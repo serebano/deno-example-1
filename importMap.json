@@ -1,5 +1,5 @@
 {
     "imports": {
-        "@io/": "file:///Users/serebano/dev/clappcodes/deno-transporter/src/"
+        "@io/": "./transporter/"
     }
 }
