@@ -56,8 +56,8 @@ const serverIncomingStreamHandler = defineHandler(
 
 Deno.serve(
   {
-    key,
-    cert,
+    // key,
+    // cert,
     port: 8001,
     onError(error) {
       console.log("error", error);
