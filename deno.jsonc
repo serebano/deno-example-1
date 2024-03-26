@@ -1,0 +1,22 @@
+{
+  "name": "@clapp/deno-example-1",
+  "tasks": {
+    "dev": "deno run -A --watch main.ts",
+    "deploy": "deployctl deploy --config=deno.jsonc --prod --entrypoint=main.ts --project=deno-example-1"
+  },
+  "importMap": "./importMap.json",
+  //   --import-map=/importMap.json
+  "deploy": {
+    "project": "253b8d2e-382c-43fe-b61c-61ffafb76099",
+    // "exclude": ["**/node_modules"],
+    "include": [
+      "main.ts",
+      "importMap.json",
+      "file:///Users/serebano/dev/clappcodes/deno-transporter/src/",
+      "file:///Users/serebano/dev/clappcodes/deno-transporter/src/**/*.ts",
+      "file:///Users/serebano/dev/clappcodes/deno-transporter/src/server.ts"
+    ],
+    "entrypoint": "./main.ts",
+    "importmap": "./importMap.json"
+  }
+}
