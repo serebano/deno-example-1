@@ -7,23 +7,28 @@ class EventTypes extends IOEventFactory {}
  * Create request stream initiated by client/browser
  * client writes / server reads
  */
-export class ClientIncomingStream extends IOEventTarget<EventTypes> {
+export class IncomingStream extends IOEventTarget<EventTypes> {
   static id = 20000;
+
   events = new EventTypes();
+  remoteId!: number;
   readable!: ReadableStream<string>;
   reader!: ReadableStreamDefaultReader<string>;
+  abortController = new AbortController();
   options: RequestInit = {
     method: "GET",
     headers: {
+      "cache-control": "no-cache",
       "content-type": "text/event-stream",
-      "transporter-by": this.name,
       "transporter-id": String(this.id),
+      "transporter-by": this.name,
     },
+    signal: this.abortController.signal,
   };
 
-  constructor(public input: URL | string) {
-    super(input);
-  }
+  //   constructor(public input: URL | string) {
+  //     super(input);
+  //   }
 
   get response() {
     return fetch(this.request);
@@ -33,22 +38,16 @@ export class ClientIncomingStream extends IOEventTarget<EventTypes> {
     this.readyState = this.CONNECTING;
     this.request = new Request(this.input, this.options);
 
-    // this.response = fetch(this.request)
+    const res = await this.response;
 
-    await this.response.then((res) => {
-      if (res.ok) {
-        this.readyState = this.OPEN;
-
-        this.id = Number(res.headers.get("transporter-id"));
-        this.readable = res.body!.pipeThrough(new TextDecoderStream());
-        this.reader = this.readable.getReader();
-      } else {
-        this.readyState = this.CLOSED;
-      }
-
-      return res;
-    });
-    // await this.response;
+    if (res.ok) {
+      this.readyState = this.OPEN;
+      this.remoteId = Number(res.headers.get("transporter-id"));
+      this.readable = res.body!.pipeThrough(new TextDecoderStream());
+      this.reader = this.readable.getReader();
+    } else {
+      this.readyState = this.CLOSED;
+    }
 
     return this;
   }
@@ -58,8 +57,9 @@ export class ClientIncomingStream extends IOEventTarget<EventTypes> {
    * @param cb - An optional callback function to handle the read data.
    * @returns A promise that resolves when the read operation is complete.
    */
-  async read(cb?: (data?: string) => PromiseLike<void>) {
+  async read(cb?: (data?: string) => PromiseLike<void> | void) {
     await this.ready;
+
     const read = async () => {
       let firstChunk = true;
       while (true) {
@@ -88,5 +88,10 @@ export class ClientIncomingStream extends IOEventTarget<EventTypes> {
       this.emit("error", error);
       return false;
     }
+  }
+
+  async close(reason?: string) {
+    await this.reader.cancel(reason || "closed by user action");
+    this.abortController.abort(reason || "closed by user action");
   }
 }

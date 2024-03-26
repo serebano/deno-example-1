@@ -23,7 +23,11 @@ export function defineHandler(handler: Deno.ServeHandler) {
 export async function serveStatic(req: Request) {
   const url = new URL(req.url);
 
-  console.log(req.method, url.pathname);
+  console.log(
+    "[" + color.green(req.method) + "] " + color.yellow(url.href) + " " +
+      req.headers.get("origin"),
+  );
+
   if (url.pathname.endsWith(".ico")) {
     return new Response(null, { status: 404 });
   } else if (url.pathname.endsWith(".js")) {
@@ -31,8 +35,12 @@ export async function serveStatic(req: Request) {
     return new Response(await Deno.readFile(modUrl), {
       status: 200,
       headers: {
-        "cache-control": "no-store",
+        "cache-control": "no-cache",
         "content-type": "application/javascript",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "*",
+        "access-control-allow-headers": "*",
+        "access-control-max-age": "100",
       },
     });
   } else if (url.pathname.endsWith(".ts")) {
@@ -41,8 +49,12 @@ export async function serveStatic(req: Request) {
     return new Response(result.get(modUrl.toString()), {
       status: 200,
       headers: {
-        "cache-control": "no-store",
+        "cache-control": "no-cache",
         "content-type": "application/javascript",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "*",
+        "access-control-allow-headers": "*",
+        "access-control-max-age": "100",
       },
     });
   } else {
@@ -64,7 +76,11 @@ export async function serveStatic(req: Request) {
         return new Response(body, {
           status: 200,
           headers: {
-            "cache-control": "no-store",
+            "cache-control": "no-cache",
+            "access-control-allow-origin": "*",
+            "access-control-allow-methods": "*",
+            "access-control-allow-headers": "*",
+            "access-control-max-age": "100",
           },
         });
       }

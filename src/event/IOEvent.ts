@@ -1,6 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
 
-import { IOEventTarget } from "../event.ts";
+import type { IOEventTarget } from "../event.ts";
 
 export interface IOEventInit<T = unknown> extends CustomEventInit {
   detail?: T;
@@ -45,13 +45,22 @@ export class IOEvent<T = any> extends Event {
   }
 }
 
-// export type EventMap<
-//   EventTypes extends IOEventFactory = IOEventFactory,
-//   T extends keyof EventTypes = keyof EventTypes,
-// > = {
-//   [K in T]: ReturnType<EventTypes[K]>;
-// };
-
 export type EventListener<T extends object, K extends keyof T> = (
   event: T[K],
 ) => void;
+
+export type IOEventMap<X, T extends Omit<X, "map"> = Omit<X, "map">> = {
+  [key in keyof T]: T[key] extends (...args: any) => any ? ReturnType<T[key]>
+    : T[key];
+};
+
+export type IOEventTypes<T> = {
+  [key in keyof T]: T[key] extends (...args: any) => any ? ReturnType<T[key]> // IOEvent<Parameters<T[key]>[0]>
+    : IOEvent; // T[key] extends (...args: any) => any ?  ReturnType<T[key]> : T[key];
+};
+
+export type IOEventType<O, K extends keyof O> = O[K] extends
+  (...args: any) => any ? ReturnType<O[K]> : IOEvent;
+
+export type IOEventParam<O, K extends keyof O> = O[K] extends
+  (...args: any) => any ? Parameters<O[K]>[0] : any;

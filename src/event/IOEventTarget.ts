@@ -1,32 +1,10 @@
 // deno-lint-ignore-file no-unused-vars no-explicit-any
-import {
-  TypedEventTarget,
-} from "https://deno.land/x/typescript_event_target@v1.1.0/mod.ts";
-import { IOEvent } from "./event.ts";
-
-// declare global {
-//   //   interface CustomEvent {
-//   //     target: IOEventTarget<IOEventTypes>;
-//   //     currentTarget: IOEventTarget<IOEventTypes>;
-//   //   }
-// }
-
-export type IOEventMap<X, T extends Omit<X, "map"> = Omit<X, "map">> = {
-  [key in keyof T]: T[key] extends (...args: any) => any ? ReturnType<T[key]>
-    : T[key];
-};
-
-export type IOEventTypes<T> = {
-  [key in keyof T]: T[key] extends (...args: any) => any ? ReturnType<T[key]> // IOEvent<Parameters<T[key]>[0]>
-    : IOEvent; // T[key] extends (...args: any) => any ?  ReturnType<T[key]> : T[key];
-};
-
-// export interface IOEventFactory {
-//   (...args: any): IOEvent;
-// }
+import { TypedEventTarget } from "./TypedEventTarget.ts";
+import { IOEvent, IOEventParam, IOEventType, IOEventTypes } from "./IOEvent.ts";
 
 export class IOEventFactory {
-  //   declare private map: ValueIsEvent<typeof this>;
+  declare target: IOEventTarget;
+
   open() {
     return new IOEvent("open");
   }
@@ -39,16 +17,10 @@ export class IOEventFactory {
   data(data: string) {
     return new IOEvent("data", { data });
   }
-  any(data: unknown) {
+  any(data: Event) {
     return new IOEvent("any", { data });
   }
 }
-
-export type IOEventType<O, K extends keyof O> = O[K] extends
-  (...args: any) => any ? ReturnType<O[K]> : IOEvent;
-
-export type IOEventParam<O, K extends keyof O> = O[K] extends
-  (...args: any) => any ? Parameters<O[K]>[0] : any;
 
 export class IOEventTarget<O extends IOEventFactory = IOEventFactory>
   extends TypedEventTarget<IOEventTypes<O>> {
@@ -91,6 +63,7 @@ export class IOEventTarget<O extends IOEventFactory = IOEventFactory>
     this.id = new.target.id++;
     this.name = new.target.name;
     this.options = Object.assign(Object.create(null), this.options, options);
+    this.events.target = this;
 
     if (input instanceof Request) {
       this.url = input.url;
@@ -113,7 +86,7 @@ export class IOEventTarget<O extends IOEventFactory = IOEventFactory>
     return this.readyPromise;
   }
 
-  get response(): Promise<Response> | Response {
+  get response(): Promise<Response | void> | Response {
     throw new TypeError(`Not implemented`);
   }
 

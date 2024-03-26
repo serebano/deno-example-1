@@ -1,22 +1,36 @@
 {
-  "name": "@clapp/deno-example-1",
+  "name": "@clapp/transporter",
   "tasks": {
-    "dev": "deno run -A --watch main.ts",
-    "deploy": "deployctl deploy --config=deno.jsonc --prod --entrypoint=main.ts --project=deno-example-1"
+    "dev": "deno run -A --env --unstable-hmr main.ts",
+    "deploy": "deployctl deploy --config=deno.jsonc --prod",
+    "dev:play": "deno run -A --watch --env --reload main.ts",
+    "bundle:browser": "deno bundle src/client.ts bundle/client.js",
+    "bundle:server": "deno bundle src/server.ts bundle/server.js",
+    "bundle:example": "deno bundle example/client.ts example/client.js",
+    "bundle": "deno task bundle:browser && deno task bundle:server && deno task bundle:example",
+    "start": "deno run -A example/server.js",
+    "deploy:play": "deployctl deploy --env-file --entrypoint=play/main.ts --project=transporter",
+    "safe": "deno fmt --check && deno lint && deno check src/**/*.ts",
+    "pre-commit": "deno lint && deno check --all *.ts",
+    "setup-pre-commit": "echo '#!/bin/sh\ndeno task pre-commit' > .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit"
   },
-  "importMap": "./importMap.json",
-  //   --import-map=/importMap.json
+  "importMap": "importMap.json",
+  "compilerOptions": {
+    "lib": [
+      "deno.window",
+      "dom"
+    ]
+  },
   "deploy": {
-    "project": "253b8d2e-382c-43fe-b61c-61ffafb76099",
-    // "exclude": ["**/node_modules"],
+    "project": "transporter",
+    "exclude": ["**/node_modules", ".cache"],
     "include": [
       "main.ts",
       "importMap.json",
-      "./transporter/src/",
-      "./transporter/src/**/*.ts",
-      "./transporter/src/server.ts"
+      "src/**/*.ts",
+      "example/*"
     ],
-    "entrypoint": "./main.ts",
-    "importmap": "./importMap.json"
+    "entrypoint": "main.ts",
+    "importmap": "importMap.json"
   }
 }

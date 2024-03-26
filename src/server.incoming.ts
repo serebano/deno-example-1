@@ -17,13 +17,39 @@ export class ServerIncomingStream extends IOEventTarget<Events> {
 
   readable!: ReadableStream<string>;
   reader!: ReadableStreamDefaultReader;
+  headers = new Headers({
+    "transporter-by": this.name,
+    "transporter-id": String(this.id),
+    "access-control-allow-origin": "*",
+    "access-control-allow-methods": "*",
+    "access-control-allow-headers": "*",
+    "access-control-max-age": "100",
+    "access-control-expose-headers": "transporter-id",
+  });
+  reading: boolean = false;
 
   /**
    * Creates a new instance of ServerIncomingStream.
    * @param request - The request object.
    */
-  constructor(public request: Request) {
-    super(request);
+  //   constructor(public request: Request) {
+  //     super(request);
+  //   }
+
+  get response() {
+    return this.read().then(() => {
+      return new Response(null, {
+        status: this.status,
+        headers: this.headers,
+      });
+    });
+  }
+
+  init() {
+    this.readable = this.request.body?.pipeThrough(new TextDecoderStream())!;
+    this.reader = this.readable.getReader();
+
+    return this;
   }
 
   /**
@@ -32,13 +58,13 @@ export class ServerIncomingStream extends IOEventTarget<Events> {
    * @returns A promise that resolves when the read operation is complete.
    */
   async read(cb?: (data?: string) => PromiseLike<void>) {
-    if (!this.readable) {
-      this.readable = this.request.body?.pipeThrough(new TextDecoderStream())!;
+    await this.ready;
+
+    if (this.reading) {
+      return;
     }
 
-    if (!this.reader) {
-      this.reader = this.readable.getReader();
-    }
+    this.reading = true;
 
     const read = async () => {
       let firstChunk = true;
@@ -64,7 +90,7 @@ export class ServerIncomingStream extends IOEventTarget<Events> {
     try {
       return await read();
     } catch (error) {
-      this.emit("close", error.message);
+      //   this.emit("close", error.message);
       this.emit("error", error);
       return false;
     }

@@ -2,18 +2,23 @@
 import { IOEvent, IOEventFactory, IOEventTarget } from "./event.ts";
 
 class EventTypes extends IOEventFactory {
+  declare target: OutgoingStream;
+
   end() {
     return new IOEvent("end");
   }
   write(chunk: string) {
     return new IOEvent("write", { data: chunk });
   }
+  abort(reason: any) {
+    return new IOEvent("abort", { data: reason });
+  }
 }
 
 /**
  * Represents a client outgoing stream for sending data to a server.
  */
-export class ClientOutgoingStream extends IOEventTarget<EventTypes> {
+export class OutgoingStream extends IOEventTarget<EventTypes> {
   /**
    * Next instance id
    */
@@ -21,29 +26,31 @@ export class ClientOutgoingStream extends IOEventTarget<EventTypes> {
 
   events = new EventTypes();
 
-  writable!: WritableStream<string>;
-  writer!: WritableStreamDefaultWriter<string>;
+  abortController = new AbortController();
+
+  headers = new Headers({
+    "transporter-id": String(this.id),
+    "transporter-by": this.name,
+  });
+
   options: RequestInit & { duplex: "half" } = {
     duplex: "half",
     method: "POST",
+    signal: this.abortController.signal,
+    headers: this.headers,
   };
 
   controller!: TransformStreamDefaultController<string>;
+  writable!: WritableStream<string>;
+  writer!: WritableStreamDefaultWriter<string>;
+  #response!: Promise<Response>;
 
-  /**
-   * Creates a new instance of the ClientOutgoingStream class.
-   * @param url - The URL of the server to send data to.
-   */
-  constructor(public url: URL | string) {
-    super(url);
-    this.options.headers = {
-      "transporter-id": String(this.id),
-      "transporter-by": this.constructor.name,
-    };
+  get response() {
+    return this.#response;
   }
 
-  get ready() {
-    return this.readyState !== this.OPEN ? this.init() : Promise.resolve(this);
+  set response(value) {
+    this.#response = value;
   }
 
   /**
@@ -51,12 +58,13 @@ export class ClientOutgoingStream extends IOEventTarget<EventTypes> {
    * @param url - The URL of the server to send data to.
    * @returns A promise that resolves when the initialization is complete.
    */
-  async init(url?: URL | string) {
-    this.url = url || this.url;
-    this.abortController = new AbortController();
+  async init() {
     this.readyState = this.CONNECTING;
 
-    const { writable, readable } = new TransformStream<string, string>({
+    const {
+      writable,
+      readable,
+    } = new TransformStream<string, string>({
       start: (_controller) => {
         this.controller = _controller;
         this.abortController.signal.onabort = () => _controller.terminate();
@@ -70,13 +78,10 @@ export class ClientOutgoingStream extends IOEventTarget<EventTypes> {
     this.writable = writable;
     this.writer = this.writable.getWriter();
 
-    this.options.signal = this.abortController.signal;
     this.options.body = readable.pipeThrough(new TextEncoderStream());
 
     this.request = new Request(this.url, this.options);
-    // this.response = fetch(this.request);
-
-    this.response
+    this.response = fetch(this.request)
       .then(async (res) => {
         this.readyState = this.CLOSED;
         const text = await res.text();
@@ -84,32 +89,40 @@ export class ClientOutgoingStream extends IOEventTarget<EventTypes> {
         this.emit("close", text);
 
         if (!res.ok) {
-          this.emit(
-            "error",
-            new TypeError(`Response error (status=${res.status})`, {
-              cause: text,
-            }),
+          const error = new TypeError(
+            `Response Error (status=${res.status}) ${text}`,
           );
+          this.emit("error", error);
+          return error;
         }
-
         return res;
       })
       .catch((err) => {
-        const isAbort = err.name === "AbortError" || err === ":close";
+        const isAbort = err.name === "AbortError";
         this.readyState = this.CLOSED;
-        this.emit("close", err.message);
 
-        if (!isAbort) this.emit("error", err);
+        if (!isAbort) {
+          this.emit("error", err);
+          return err;
+        } else {
+          this.emit("close", this.abortController.signal.reason);
+
+          return this.abortController.signal.reason;
+        }
       });
+
+    const onabort = (reason?: string) => this.emit("abort", reason);
+    this.abortController.signal.addEventListener(
+      "abort",
+      function (e) {
+        onabort(this.reason);
+      },
+    );
 
     this.readyState = this.OPEN;
     this.emit("open");
 
     return this;
-  }
-
-  get response() {
-    return fetch(this.request);
   }
 
   /**
@@ -132,12 +145,8 @@ export class ClientOutgoingStream extends IOEventTarget<EventTypes> {
     }
   }
 
-  async close() {
+  async close(reason?: string) {
     await this.writer.close();
-    this.abortController.abort("closed by user action");
+    this.abortController.abort(reason || "closed by user action");
   }
-}
-
-export function createOutgoingStreamClient(url: string | URL) {
-  return new ClientOutgoingStream(url);
 }

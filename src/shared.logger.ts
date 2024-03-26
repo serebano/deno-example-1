@@ -23,11 +23,16 @@ export function logHandler<T extends IOEvent>(e: T) {
     anyev.target = e.target;
     e = anyev;
   }
-  const data = e.error || e.data || e.detail;
+  const data = e.error || e.data || e.detail || "";
 
   const eventColor = e.error ? "red" : "green";
+  const icon = e.target.name.includes("Incoming")
+    ? color.green("⇓⇓⇓")
+    : e.target.name.includes("Outgoing")
+    ? color.yellow("⇑⇑⇑")
+    : "";
   console.log(
-    `${color.blue(e.target?.name)} id(${color.yellow(e.target?.id)}) on(${
+    ` ${icon} ${(e.target?.name)} id(${color.yellow(e.target?.id)}) on(${
       color[eventColor](e.type)
     })`,
     data,

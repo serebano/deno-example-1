@@ -4,6 +4,9 @@ class Events extends IOEventFactory {
   write(chunk: string) {
     return new IOEvent("write", { data: chunk });
   }
+  enqueue(chunk: string) {
+    return new IOEvent("enqueue", { data: chunk });
+  }
 }
 
 /**
@@ -14,9 +17,6 @@ class Events extends IOEventFactory {
 export class ServerOutgoingStream extends IOEventTarget<Events> {
   static id = 30000;
   static instances = new Map<number, ServerOutgoingStream>();
-
-  events = new Events();
-
   /**
    * Writes a chunk of data to all instances of the server outgoing stream.
    * @param chunk - The chunk of data to write.
@@ -27,6 +27,20 @@ export class ServerOutgoingStream extends IOEventTarget<Events> {
     }
   }
 
+  events = new Events();
+  headers = new Headers({
+    "cache-control": "no-cache",
+    "content-type": "text/event-stream",
+    "transporter-id": String(this.id),
+    "transporter-instances": String(ServerOutgoingStream.instances.size),
+    // cors
+    "access-control-allow-origin": "*",
+    "access-control-allow-methods": "*",
+    "access-control-allow-headers": "*",
+    "access-control-max-age": "100",
+    "access-control-expose-headers": "transporter-id",
+  });
+
   readable!: ReadableStream<Uint8Array>;
   #controller!: ReadableStreamDefaultController;
   #queue: string[] = [];
@@ -35,13 +49,9 @@ export class ServerOutgoingStream extends IOEventTarget<Events> {
    * Creates a new instance of the ServerOutgoingStream class.
    * @param request - The request associated with the stream.
    */
-  constructor(public request: Request) {
-    super(request);
-    // this.on("write", (e) => {});
-    // this.on("error", e => {e.error})
-    // this.events.error()
-    // this.emit('error')
-  }
+  //   constructor(public request: Request) {
+  //     super(request);
+  //   }
 
   init() {
     this.readyState = this.CONNECTING;
@@ -59,13 +69,6 @@ export class ServerOutgoingStream extends IOEventTarget<Events> {
         this.emit("close", reason);
       },
     }).pipeThrough(new TextEncoderStream());
-
-    this.headers = new Headers({
-      "cache-control": "no-store",
-      "content-type": "text/event-stream",
-      "event-stream-id": String(this.id),
-      "event-stream-instances": String(ServerOutgoingStream.instances.size),
-    });
 
     return this;
   }
@@ -90,6 +93,8 @@ export class ServerOutgoingStream extends IOEventTarget<Events> {
     }
     if (!this.#controller) {
       this.#queue.push(chunk);
+      this.emit("enqueue", chunk);
+
       return;
     }
     if (this.#queue.length > 0) {

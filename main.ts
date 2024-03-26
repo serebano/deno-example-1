@@ -1,17 +1,13 @@
 // deno-lint-ignore-file require-await
-import { cert, key } from "./cert/index.ts";
-import { ServerIncomingStream, ServerOutgoingStream } from "@io/server.ts";
-import { defineHandler, serveStatic } from "@io/server.utils.ts";
-import { logHandler } from "@io/shared.logger.ts";
-import { assert } from "https://deno.land/std@0.186.0/_util/asserts.ts";
+import { ServerIncomingStream, ServerOutgoingStream } from "./src/server.ts";
+import { defineHandler, serveStatic } from "./src/server.utils.ts";
+import { logHandler } from "./src/shared.logger.ts";
 
 const serverOutgoingStreamHandler = defineHandler(
   async function serverOutgoingStreamHandler(req) {
-    assert("GET" === req.method);
-
     const api = new ServerOutgoingStream(req);
     let timerId: number;
-    console.log("api", api.events);
+
     api.addEventListener("close", (event) => {
       logHandler(event);
       clearInterval(timerId);
@@ -20,7 +16,7 @@ const serverOutgoingStreamHandler = defineHandler(
 
     api.addEventListener("open", (event) => {
       logHandler(event);
-      timerId = setInterval(() => {
+      timerId = setTimeout(() => {
         api.write("data: " + Date.now() + "\n\n");
       }, 1000);
       ServerOutgoingStream.write("data: hello, i'm the " + api.id + "\n\n");
@@ -32,64 +28,28 @@ const serverOutgoingStreamHandler = defineHandler(
 
 const serverIncomingStreamHandler = defineHandler(
   async function serverIncomingStreamHandler(req) {
-    assert("POST" === req.method);
-
     const api = new ServerIncomingStream(req);
 
-    api.on("open", logHandler);
-    api.on("close", logHandler);
-    api.on("error", logHandler);
-    api.on("data", logHandler);
-    api.on("end", logHandler);
+    api.on("any", logHandler);
 
-    // setTimeout(() => {
-    // 	api.close();
-    // }, 1000);
-
-    await api.read();
-
-    return new Response(":end", {
-      status: 200,
-    });
+    return api.response;
   },
 );
 
 Deno.serve(
   {
-    // key,
-    // cert,
-    port: 8001,
-    onError(error) {
-      console.log("error", error);
-      return new Response(String(error), { status: 400 });
-    },
+    key: Deno.env.get("HTTPS_KEY"),
+    cert: Deno.env.get("HTTPS_CERT"),
+    port: Number(Deno.env.get("PORT")) || 8000,
+    hostname: Deno.env.get("HOSTNAME") || "localhost",
+
     async onListen({ port, hostname }) {
       const url = `https://${hostname}:${port}/`;
       console.log("\n\tListening @", url, "\n");
-
-      // const api = new ClientOutgoingStream(url);
-
-      // api.on("close", (e) =>
-      // 	console.log(
-      // 		color.blue(e.target.constructor.name),
-      // 		e.target.id,
-      // 		color.green(e.type),
-      // 		e.detail
-      // 	)
-      // );
-      // api.on("error", (e) =>
-      // 	console.log(
-      // 		color.blue(e.target.constructor.name),
-      // 		e.target.id,
-      // 		color.green(e.type),
-      // 		e.detail
-      // 	)
-      // );
-
-      // await api.ready;
-      // await api.write("Hello streams ;)");
-
-      // setTimeout(() => api.close(), 3000);
+    },
+    onError(error) {
+      console.log("error", error);
+      return new Response(String(error), { status: 400 });
     },
   },
   async (request, info) => {
@@ -103,6 +63,16 @@ Deno.serve(
         return await serverOutgoingStreamHandler(request, info);
       case "POST":
         return await serverIncomingStreamHandler(request, info);
+      case "OPTIONS":
+        return new Response(null, {
+          status: 200,
+          headers: {
+            "access-control-allow-origin": "*",
+            "access-control-allow-methods": "*",
+            "access-control-allow-headers": "*",
+            "access-control-max-age": "100",
+          },
+        });
       default: {
         return new Response("Bad Request " + request.method, {
           status: 400,

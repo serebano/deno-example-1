@@ -1,5 +1,5 @@
-import { ServerOutgoingStream } from "@io/server.ts";
-import { logHandler } from "@io/shared.logger.ts";
+import { ServerOutgoingStream } from "./src/server.ts";
+import { logHandler } from "./src/shared.logger.ts";
 
 Deno.serve((req) => {
   const api = new ServerOutgoingStream(req);
