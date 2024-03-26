@@ -1,11 +1,11 @@
 {
-    "imports": {
-        "@io": "./src/index.ts",
-        "@io/server": "./src/server.ts",
-        "@io/client": "./src/client.ts",
-        "@io/shared": "./src/shared.ts",
-        "@io/example/": "./example/",
-        "@io/deps": "./deps.ts",
-        "@io/": "./src/"
-    }
+  "imports": {
+    "@io": "./src/index.ts",
+    "@io/server": "./src/server.ts",
+    "@io/client": "./src/client.ts",
+    "@io/shared": "./src/shared.ts",
+    "@io/example/": "./example/",
+    "@io/deps": "./deps.ts",
+    "@io/": "./src/"
+  }
 }
