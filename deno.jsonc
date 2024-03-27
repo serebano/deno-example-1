@@ -7,9 +7,10 @@
     "bundle:browser": "deno bundle src/client.ts bundle/client.js",
     "bundle:server": "deno bundle src/server.ts bundle/server.js",
     "bundle:example": "deno bundle example/client.ts example/client.js",
-    "bundle": "deno task bundle:browser && deno task bundle:server && deno task bundle:example",
+    "bundle": "rm -rf bundle && mkdir bundle && deno task bundle:browser && deno task bundle:server && deno task bundle:example",
     "start": "deno run -A example/server.js",
     "deploy:play": "deployctl deploy --env-file --entrypoint=play/main.ts --project=transporter",
+    "build:npm": "deno run -A ./tools/npm.build.ts 0.1",
     "safe": "deno fmt && deno lint && deno check src/**/*.ts",
     "pre-commit": "deno fmt && deno lint && deno check **/*.ts",
     "setup-pre-commit": "echo '#!/bin/sh\ndeno task pre-commit' > .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit"

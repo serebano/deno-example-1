@@ -1,0 +1,42 @@
+{
+  "module": "./esm/mod.js",
+  "main": "./script/mod.js",
+  "types": "./types/mod.d.ts",
+  "name": "@httpland/http-cors",
+  "version": "0.1",
+  "description": "CORS middleware for standard Request and Response",
+  "keywords": [
+    "http",
+    "cors",
+    "preflight",
+    "middleware",
+    "request",
+    "response"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/httpland/http-cors",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/httpland/http-cors.git"
+  },
+  "bugs": {
+    "url": "https://github.com/httpland/http-cors/issues"
+  },
+  "sideEffects": false,
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./types/mod.d.ts",
+        "default": "./esm/mod.js"
+      },
+      "require": {
+        "types": "./types/mod.d.ts",
+        "default": "./script/mod.js"
+      }
+    }
+  }
+}
